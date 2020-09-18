@@ -34,6 +34,7 @@ exports.new = function (req, res) {
     var pokemon = new Pokemon();
     pokemon.name = req.body.name ? req.body.name : pokemon.name;
     pokemon.index = req.body.index;
+    pokemon.generation = req.body.generation;
     pokemon.height = req.body.height;
     pokemon.weight = req.body.weight;
     pokemon.elementType = req.body.elementType;
@@ -69,9 +70,14 @@ exports.update = function (req, res) {Pokemon.findById(req.params.pokemon_id, fu
         res.send(err);
         
         pokemon.name = req.body.name ? req.body.name : pokemon.name;
-        pokemon.gender = req.body.gender;
-        pokemon.email = req.body.email;
-        pokemon.phone = req.body.phone;
+        pokemon.index = req.body.index;
+        pokemon.generation = req.body.generation;
+        pokemon.height = req.body.height;
+        pokemon.weight = req.body.weight;
+        pokemon.elementType = req.body.elementType;
+        // pokemon.images = req.body.images;
+        pokemon.moves = req.body.moves;
+        pokemon.description = req.body.description;
         
         // save the pokemon and check for errors
         pokemon.save(function (err) {

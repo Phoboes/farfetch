@@ -12,6 +12,9 @@ var pokemonSchema = mongoose.Schema({
         type: Number,
         required: true
     },
+    generation: {
+        type: String
+    },
     elementType: {
         type: String
     },
