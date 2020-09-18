@@ -1,8 +1,8 @@
 Pokemon = require('../models/pokemonModel');
 const $ = require('cheerio');
 const rp = require('request-promise');
-const baseURL = 'https://pokemon.fandom.com/wiki/';
-const pokeIndex = 'List_of_Pokémon';
+const baseURL = 'https://pokemon.fandom.com';
+const pokeIndex = '/wiki/List_of_Pokémon';
 
 const newPokeData = {
     name: '',
@@ -23,30 +23,56 @@ rp( baseURL + pokeIndex )
     console.log( `Tables/Generations found: ${ genTables.length }.` );
 
     // Start with a single table; convert iterate them all later.
-    const thisGen = genTables[0];
+    // const thisGen = genTables[0];
 
     // console.log( $( 'tr', thisGen ).length );
-    // Iterating tables for each generation. The first TR is a header, so we skip it with let = 1.
-    for( let i = 1; i < $( 'tr', thisGen ).length; i++ ){
-        const singlePokemonRow = $( 'tr', thisGen )[i];
-        const urls = $( 'a', singlePokemonRow );
-        
-        // Find a link with a text value (this will be the pokemon name), save the value directly to our pokemon
-        newPokeData.name = urls[1].attribs.title;
-        // Get the index while we're at it. I decided to grab it from thesite rather than use i, as we'll be iterating multiple tables (and i will reset every table).
-        newPokeData.index = parseInt( $( 'td', singlePokemonRow )[0].children[0].data );
 
-        // Save the partial URL (ie /wiki/bulbasaur/ for next steps)
-        const pokeUrl = urls[1].attribs.href;
-        console.log( `Index: ${ newPokeData.index }, ${ newPokeData.name }, ${ pokeUrl }` );
+    // parseTable( thisGen )
+
+    for( let i = 0; i < genTables.length; i++ ){
+      parseTable( genTables[i] );
     }
 
+    function parseTable ( gen ){
 
-  })
+      // This is an annoying utility function to make sure there's a text value in an <a> tag so I can get a pokemon name from it.
+      const getUrlData = ( urls ) => {
+        for( let i = 0; i< urls.length; i++ ){
+          if( urls[i].attribs.title !== undefined ){
+            return urls[i];
+          }
+        }
+      };
+
+      // Iterating tables for each generation. The first TR is a header, so we skip it with let = 1.
+      for( let i = 1; i < $( 'tr', gen ).length; i++ ){
+
+        const singlePokemonRow = $( 'tr', gen )[i];
+        const urls = $( 'a', singlePokemonRow );
+        const nameUrl = getUrlData( urls );
+
+        // Find a link with a text value (this will be the pokemon name), save the value directly to our pokemon
+        newPokeData.name = nameUrl.attribs.title;
+        // Get the index while we're at it. I decided to grab it from the site rather than use i, as we'll be iterating multiple tables (and i will reset every table).
+        newPokeData.index = parseInt( $( 'td', singlePokemonRow )[0].children[0].data );
+
+        // Save the partial URL (ie /wiki/bulbasaur/ for deeper page scraping)
+        const pokeUrl = nameUrl.attribs.href;
+        console.log( `Index: ${ newPokeData.index }, ${ newPokeData.name }, ${ pokeUrl }` );
+
+        // Going deeper:
+
+        }
+
+    };
+
+
+  }) // End of successful response
   .catch(function(err){
     //handle error
     console.log("You done messed up A-Aron!");
-  });
+    console.log( err )
+  }); // End of error handling
 
 
 
