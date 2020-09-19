@@ -79,7 +79,6 @@ rp( baseURL + pokeIndex )
           const imperials = $("[title='Imperial']", html);
           //  lbs to kg
           parsedVals[0] = (parseFloat((imperials[0].children[0].data)) * 0.453592.toFixed(2) + ' kg');
-          // debugger
           // ft/in to m
           const splitText = imperials[1].children[0].data.split("'");
           const inches = ( parseInt( splitText[0] ) * 12 ) + parseInt( splitText[1] );
