@@ -26,14 +26,15 @@ const newPokemon = {
 
 // Begin timer for total task.
 const timerID = setInterval(() => {
-  timer += 100;
-}, 100);
+    timer += 100;
+  }, 100);
 
 rp( baseURL + pokeIndex )
   .then(function(html){
     console.log('--------Success--------');
     const genTables = $( '.wikitable', html );
     console.log( `Tables/Generations found: ${ genTables.length }.` );
+    console.log('-----------------------');
 
     cycleTables();
 
@@ -47,6 +48,8 @@ rp( baseURL + pokeIndex )
         console.log('-----------------------');
 
       }
+      console.log(`Complete. Time: ${ timer / 60000 } minutes.`);
+      clearInterval(timerID);
     }
 
     async function parseTable ( gen, tableNum ){
@@ -71,16 +74,21 @@ rp( baseURL + pokeIndex )
           }
         }
 
+        // Did you know some pokemon are missing metric values and need to be converted from imperial? me neither.
         if(parsedVals.length < 2){
-          // debugger
           const imperials = $("[title='Imperial']", html);
+          //  lbs to kg
+          parsedVals[0] = (parseFloat((imperials[0].children[0].data)) * 0.453592.toFixed(2) + ' kg');
           // debugger
-          parsedVals.unshift(parseFloat((imperials[0].children[0].data)) * 0.453592.toFixed(2) + ' kg')
+          // ft/in to m
+          const splitText = imperials[1].children[0].data.split("'");
+          const inches = ( parseInt( splitText[0] ) * 12 ) + parseInt( splitText[1] );
+          parsedVals[1] = ( inches / 39.37 ).toFixed(2);
         }
         return parsedVals;
       }
 
-      // Iterating tables for each generation. The first TR is a header, so we skip it with let = 1.
+      // Iterating tables for each generation. The first TR is a header, so we skip it with let 1.
       for( let i = 1; i < $( 'tr', gen ).length; i++ ){
 
         const singlePokemonRow = $( 'tr', gen )[i];
@@ -94,40 +102,36 @@ rp( baseURL + pokeIndex )
 
         // Save the partial URL (ie /wiki/bulbasaur/ for deeper page scraping)
         const pokeUrl = nameUrl.attribs.href;
-        console.log( `Index: ${ newPokemon.index }, ${ newPokemon.name }, ${ pokeUrl }, Gen:${ newPokemon.generation }` );
         const typelist = $('span', singlePokemonRow);
         const types = [];
 
         // Find the types of the pokemon in column (ie grass/flying)
+
         for( let j = 0; j < typelist.length; j++ ){
           if ( typelist[j].children[0].data !== undefined && (/.+(type).+/).test(typelist[j].attribs.class) ){
             types.push( typelist[j].children[0].data );
           }
         }
 
+        // TODO -- Some pokemon have lots of types. Handle that.
         // Concat multiple types or store a single.
         newPokemon.elementType = types.length > 1 ? `${types[0]}/${types[1]}` : types[0];
 
         // Going deeper:
-          // Access the single page view of each pokemon we scrape using the /wixi/pokemonName above
+          // Access the single page view of each pokemon we scrape using the /wiki/{pokemonName} above
         const singlePageScrape = ( wikiUrl ) => {
           return new Promise( resolve =>
             {
               rp( baseURL + wikiUrl ).then(( singleViewHtml ) => {
-                // const title = $('.page-header__title', singleViewHtml).text();
-                // const height = $('span', singleViewHtml);
-                // const testmetric = $("[title='Metric']", singleViewHtml);
-                // debugger
+
                 const metrics = getMetric( singleViewHtml );
                 newPokemon.weight = metrics[0];
-                // debugger
-                newPokemon.height = metrics[1] 
+                newPokemon.height = metrics[1];
 
                 // images for later use:
                 newPokemon.images.cardImage = $('.pi-image-thumbnail', singleViewHtml)[0].attribs.src;
                 newPokemon.images.cardSprite = $('h2 .image img', singleViewHtml)[0].attribs["data-src"];
                 const images = $('.pi-smart-group-body .image img', singleViewHtml);
-                // const spriteArr = [];
 
                 // Try for all the evolution sprites on the page, there aren't classes so we need annoying selectors to find what we need
                   //  Ignore the img if it has the "Shape" tag -- it's a weird dinosaur thing
@@ -137,10 +141,7 @@ rp( baseURL + pokeIndex )
                     newPokemon.images.sprites.push(images[i].attribs["data-src"])
                   }
                 }
-
                 resolve( newPokemon );
-
-
               })
             })
         }
@@ -179,7 +180,6 @@ rp( baseURL + pokeIndex )
           .replace("mr-rime", "mr")
           .replace("mimikyu", "mimikyu-disguised");
 
-          // debugger
           const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${ name }`)
 
           if (!res.ok) {
@@ -189,18 +189,16 @@ rp( baseURL + pokeIndex )
 
           const json = await res.json()
           return json;
-          // const json = await res.json()
-          // debugger
-          // return json;
         }
 
+        // The API is vicious and breaks things if it doesn't get what it expects. If it's misbehaving; keep the values empty.
         const pokeApiResults = await fetchPokemonAPI(newPokemon.name).catch( (e) => { return { abilities: '', sprites: []} } );
 
         newPokemon.moves = pokeApiResults.abilities;
         newPokemon.images.other = pokeApiResults.sprites;
 
         const result = await singlePageScrape( pokeUrl );
-        // debugger
+        console.log(`Index: ${ newPokemon.index }, ${ newPokemon.name }, ${ pokeUrl }, Gen:${ newPokemon.generation }`);
         console.log( newPokemon.images.cardImage );
         console.log( newPokemon.elementType );
         console.log(`Weight: ${newPokemon.weight}, height: ${newPokemon.height}` );
@@ -245,5 +243,5 @@ rp( baseURL + pokeIndex )
 //         });
 //     });
 // };
-console.log( `Complete. Time: ${ timer / 60000 }` );
-clearInterval(timerID);
+// console.log( `Complete. Time: ${ timer / 60000 }` );
+// clearInterval(timerID);
