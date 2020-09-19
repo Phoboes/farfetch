@@ -5,8 +5,9 @@ const fetch = require("node-fetch");
 
 const baseURL = 'https://pokemon.fandom.com';
 const pokeIndex = '/wiki/List_of_Pokémon';
+let timer = 0;
 
-const newPokeData = {
+const newPokemon = {
     name: '',
     index: null,
     generation: '',
@@ -23,11 +24,10 @@ const newPokeData = {
     description: ''
 };
 
-const pokeImageData = {
-  cardImage: "",
-  cardSprite: "",
-  sprites: []
-};
+// Begin timer for total task.
+const timerID = setInterval(() => {
+  timer += 100;
+}, 100);
 
 rp( baseURL + pokeIndex )
   .then(function(html){
@@ -40,13 +40,19 @@ rp( baseURL + pokeIndex )
     async function cycleTables (){
       for( let i = 0; i < genTables.length; i++ ){
         await parseTable( genTables[i], ( i + 1 ) );
+        console.log('-----------------------');
+        console.log('-----------------------');
+        console.log(`Table ${ i + 1} done, ${ timer / 60000 } minutes.`);
+        console.log('-----------------------');
+        console.log('-----------------------');
+
       }
     }
 
     async function parseTable ( gen, tableNum ){
 
       // The table the pokemon is found on is its generation
-      newPokeData.generation = tableNum;
+      newPokemon.generation = tableNum;
       // This is an annoying utility function to make sure there's a text value in an <a> tag so I can get a pokemon name from it.
       const getUrlData = ( urls ) => {
         for( let i = 0; i< urls.length; i++ ){
@@ -56,14 +62,22 @@ rp( baseURL + pokeIndex )
         }
       };
 
-      const getMetric = ( spans ) => {
-        const metric = []
-        for( let i = 0; i < spans.length; i++ ){
-          if( spans[i].attribs.title !== undefined && spans[i].attribs.title === "Metric" ){
-            metric.push( spans[i] );
+      const getMetric = ( html ) => {
+        const metrics = $("[title='Metric']", html);
+        const parsedVals = [];
+        for (let i = 0; i < metrics.length; i++) {
+          if ( metrics[i].children[0].data !== undefined ) {
+            parsedVals.push(metrics[i].children[0].data);
           }
         }
-        return metric;
+
+        if(parsedVals.length < 2){
+          // debugger
+          const imperials = $("[title='Imperial']", html);
+          // debugger
+          parsedVals.unshift(parseFloat((imperials[0].children[0].data)) * 0.453592.toFixed(2) + ' kg')
+        }
+        return parsedVals;
       }
 
       // Iterating tables for each generation. The first TR is a header, so we skip it with let = 1.
@@ -74,13 +88,13 @@ rp( baseURL + pokeIndex )
         const nameUrl = getUrlData( urls );
 
         // Find a link with a text value (this will be the pokemon name), save the value directly to our pokemon
-        newPokeData.name = nameUrl.attribs.title;
+        newPokemon.name = nameUrl.attribs.title;
         // Get the index while we're at it. I decided to grab it from the site rather than use i, as we'll be iterating multiple tables (and i will reset every table).
-        newPokeData.index = parseInt( $( 'td', singlePokemonRow )[0].children[0].data );
+        newPokemon.index = parseInt( $( 'td', singlePokemonRow )[0].children[0].data );
 
         // Save the partial URL (ie /wiki/bulbasaur/ for deeper page scraping)
         const pokeUrl = nameUrl.attribs.href;
-        console.log( `Index: ${ newPokeData.index }, ${ newPokeData.name }, ${ pokeUrl }` );
+        console.log( `Index: ${ newPokemon.index }, ${ newPokemon.name }, ${ pokeUrl }, Gen:${ newPokemon.generation }` );
         const typelist = $('span', singlePokemonRow);
         const types = [];
 
@@ -92,7 +106,7 @@ rp( baseURL + pokeIndex )
         }
 
         // Concat multiple types or store a single.
-        newPokeData.elementType = types.length > 1 ? `${types[0]}/${types[1]}` : types[0];
+        newPokemon.elementType = types.length > 1 ? `${types[0]}/${types[1]}` : types[0];
 
         // Going deeper:
           // Access the single page view of each pokemon we scrape using the /wixi/pokemonName above
@@ -102,13 +116,16 @@ rp( baseURL + pokeIndex )
               rp( baseURL + wikiUrl ).then(( singleViewHtml ) => {
                 // const title = $('.page-header__title', singleViewHtml).text();
                 // const height = $('span', singleViewHtml);
-                const metrics = getMetric( $('span', singleViewHtml) );
-                newPokeData.weight = metrics[0].children[0].data;
-                newPokeData.height = metrics[1].children[0].data
+                // const testmetric = $("[title='Metric']", singleViewHtml);
+                // debugger
+                const metrics = getMetric( singleViewHtml );
+                newPokemon.weight = metrics[0];
+                // debugger
+                newPokemon.height = metrics[1] 
 
                 // images for later use:
-                newPokeData.images.cardImage = $('.pi-image-thumbnail', singleViewHtml)[0].attribs.src;
-                newPokeData.images.cardSprite = $('h2 .image img', singleViewHtml)[0].attribs["data-src"];
+                newPokemon.images.cardImage = $('.pi-image-thumbnail', singleViewHtml)[0].attribs.src;
+                newPokemon.images.cardSprite = $('h2 .image img', singleViewHtml)[0].attribs["data-src"];
                 const images = $('.pi-smart-group-body .image img', singleViewHtml);
                 // const spriteArr = [];
 
@@ -117,11 +134,11 @@ rp( baseURL + pokeIndex )
                   //  Ignore the shape if it's under 20px wide -- It's probably a footprint sprite.
                 for( let i = 0; ( i < images.length ); i++ ){
                   if (!/(Shape)/.test(images[i].attribs.alt) && images[i].attribs.width > 20 ){
-                    newPokeData.images.sprites.push(images[i].attribs["data-src"])
+                    newPokemon.images.sprites.push(images[i].attribs["data-src"])
                   }
                 }
 
-                resolve( newPokeData );
+                resolve( newPokemon );
 
 
               })
@@ -129,20 +146,65 @@ rp( baseURL + pokeIndex )
         }
 
         const fetchPokemonAPI = async (name) => {
-          const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${ name.toLowerCase() }`)
+
+          //  I don't want to talk about it.
+          name = name.toLowerCase()
+          .replace(/(é+)/g, "e")
+          .replace("♀", "-f")
+          .replace("♂", "-m")
+          .replace(" ", "-")
+          .replace(".", "")
+          .replace("'", "")
+          .replace(":", "")
+          .replace('deoxys', "deoxys-normal")
+          .replace('wormadam', "wormadam-plant")
+          .replace('giratina', "giratina-altered")
+          .replace('shaymin', "shaymin-land")
+          .replace('basculin', "basculin-red-striped")
+          .replace("darmanitan", "darmanitan-standard")
+          .replace("tornadus", "tornadus-incarnate")
+          .replace("thundurus", "thundurus-incarnate")
+          .replace("landorus", "landorus-incarnate")
+          .replace("keldeo", "keldeo-ordinary")
+          .replace("meloetta", "meloetta-aria")
+          .replace("meowstic", "meowstic-male")
+          .replace("aegislash", "aegislash-shield")
+          .replace("pumpkaboo", "pumpkaboo-average")
+          .replace("gourgeist", "gourgeist-average")
+          .replace("oricorio", "oricorio-pom-pom")
+          .replace("lycanroc", "lycanroc-midnight")
+          .replace("wishiwashi", "wishiwashi-solo")
+          .replace("minior", "minior-red-meteor")
+          .replace("sirfetchd", "sirfetch")
+          .replace("mr-rime", "mr")
+          .replace("mimikyu", "mimikyu-disguised");
+
+          // debugger
+          const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${ name }`)
+
+          if (!res.ok) {
+            const message = `An error has occured: ${res.status}`;
+            throw new Error(message);
+          }
+
           const json = await res.json()
           return json;
+          // const json = await res.json()
+          // debugger
+          // return json;
         }
 
-        const pokeApiResults = await fetchPokemonAPI(newPokeData.name);
+        const pokeApiResults = await fetchPokemonAPI(newPokemon.name).catch( (e) => { return { abilities: '', sprites: []} } );
 
-        newPokeData.moves = pokeApiResults.abilities;
-        newPokeData.images.other = pokeApiResults.sprites;
+        newPokemon.moves = pokeApiResults.abilities;
+        newPokemon.images.other = pokeApiResults.sprites;
 
         const result = await singlePageScrape( pokeUrl );
-        // console.log( result.cardImage );
-        console.log( newPokeData.elementType );
-        console.log(`Weight: ${newPokeData.weight}, height: ${newPokeData.height}` );
+        // debugger
+        console.log( newPokemon.images.cardImage );
+        console.log( newPokemon.elementType );
+        console.log(`Weight: ${newPokemon.weight}, height: ${newPokemon.height}` );
+        console.log( `Moves: ${newPokemon.moves.length}` );
         console.log('-----------------------');
         }
 
@@ -183,3 +245,5 @@ rp( baseURL + pokeIndex )
 //         });
 //     });
 // };
+console.log( `Complete. Time: ${ timer / 60000 }` );
+clearInterval(timerID);
