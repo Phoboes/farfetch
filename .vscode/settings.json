@@ -1,0 +1,15 @@
+{
+    "workbench.colorCustomizations": {
+    "[Synthwave x Fluoromachine]": {}
+    },
+    "workbench.colorTheme": "Synthwave x Fluoromachine",
+    "workbench.preferredDarkColorTheme": "Synthwave x Fluoromachine",
+    "workbench.preferredHighContrastColorTheme": "Synthwave x Fluoromachine",
+    "workbench.preferredLightColorTheme": "Synthwave x Fluoromachine",
+    "editor.multiCursorModifier": "ctrlCmd",
+    "editor.wordWrap": "on",
+    "beautify.config": "",
+    "vscode_custom_css.imports": [
+        "file:///C:/Users/Kane/.vscode/extensions/webrender.synthwave-x-fluoromachine-0.0.12/synthwave-x-fluoromachine.css"
+        ]
+}
