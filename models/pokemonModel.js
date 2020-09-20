@@ -27,6 +27,9 @@ var pokemonSchema = mongoose.Schema({
     // images: {
     //     type: Schema.Types.ObjectId, ref: 'Image'
     // },
+    images: {
+        type: Array
+    },
     moves: {
         type: Array
     },
