@@ -34,28 +34,23 @@ const PageFilter = {
         const cardList = $('.pi-section-navigation li div', html);
         // debugger
         if (cardList.length > 0) {
-            for (let i = 1; i <= cardList.length; i++) {
+            for (let i = 0; i < cardList.length; i++) {
                 const currentCard = $('.pi-section-content', html)[i];
                 // Certain pages have alternate names, like Ratata's card labelled as "Kantonian Form" -- check the title tag on the card as a failsafe
+                console.log("<<MULTIPLE FORMS>>");
                 //  TODO: Maybe kill off the card tag checker
-                // debugger
                 if (
                     cardList[i].children[0].data.trim() === pokemon.name ||
                     $('.pi-title', currentCard)[0].children[0].data.trim() === pokemon.name
                 ) {
-                    debugger
                     return currentCard;
-                } else if ( i === cardList.length ){
-                    debugger
+                } else if ( i + 1 === cardList.length ){
+                    return $('.pi-section-content', html)[0];
                 }
             }
-            debugger
-            return $('.pi-section-content', html)[0];
         } else {
-            debugger
             return html;
         }
-        debugger
     },
 
     getTypes: function(html){

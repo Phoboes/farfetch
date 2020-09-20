@@ -8,9 +8,8 @@ const { html } = require('cheerio');
 const baseURL = 'https://pokemon.fandom.com';
 const pokeIndex = '/wiki/List_of_Pokémon';
 let timer = 0;
-const genNum = 8;
+const genNum = 1;
 
-// debugger
 // Begin timer for total task.
 const timerID = setInterval(() => {
     timer += 100;
@@ -42,7 +41,7 @@ rp( baseURL + pokeIndex )
     async function parseTable ( gen ){
 
       // Iterating tables for each generation. The first TR is a header, so we skip it with let 1.
-      for( let i = 40; i < $( 'tr', gen ).length; i++ ){
+      for( let i = 1; i < $( 'tr', gen ).length; i++ ){
 
         const singlePokemonRow = $( 'tr', gen )[i];
         const urls = $( 'a', singlePokemonRow );
@@ -69,7 +68,6 @@ rp( baseURL + pokeIndex )
                 newPokemon.elementType = filter.getTypes(parentCard);
                 newPokemon.index = filter.getIndex(parentCard);
                 newPokemon.generation = filter.getGen( parentCard );
-                // debugger
                 // images for later use:
                 newPokemon.images.cardImage = $('.pi-image-thumbnail', parentCard)[0].attribs.src;
                 newPokemon.images.cardSprite = $('h2 .image img', parentCard)[0].attribs["data-src"];
@@ -77,11 +75,14 @@ rp( baseURL + pokeIndex )
                 //  TODO Descriptions are broken frequently by terrible formatting. This needs a lot of tweaking.
                 desc = $('.pokedex_entry p', singleViewHtml);
                 // Sword and shield pokemon currently have broken/missing descriptions, this code is mostly to avoid them.
-                if (desc.children !== undefined || desc.children.length === 0) {
-                  // debugger
-                  if ( desc[0].children[0] !== undefined ){
-                    newPokemon.description = desc[0].children[0].data;
+                if( desc.length ){
+                  if (desc.children !== undefined || desc.children.length === 0) {
+                    if (desc[0].children[0] !== undefined) {
+                      newPokemon.description = desc[0].children[0].data;
+                    }
                   }
+                } else {
+                  newPokemon.description = '';
                 }
 
 
@@ -118,7 +119,8 @@ rp( baseURL + pokeIndex )
   .catch(function(err){
     //handle error
     console.log("You done messed up A-Aron!");
-    console.log( err )
+    console.log( err );
+    clearInterval(timerID);
   }); // End of error handling
 
 
