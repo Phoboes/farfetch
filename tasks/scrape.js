@@ -6,6 +6,7 @@ const fetch = require("node-fetch");
 const baseURL = 'https://pokemon.fandom.com';
 const pokeIndex = '/wiki/List_of_Pokémon';
 let timer = 0;
+const genNum = 1;
 
 const newPokemon = {
     name: '',
@@ -39,7 +40,7 @@ rp( baseURL + pokeIndex )
     cycleTables();
 
     async function cycleTables (){
-      for( let i = 0; i < genTables.length; i++ ){
+      for( let i = (genNum - 1); i < genTables.length; i++ ){
         await parseTable( genTables[i], ( i + 1 ) );
         console.log('-----------------------');
         console.log('-----------------------');
@@ -65,15 +66,20 @@ rp( baseURL + pokeIndex )
         }
       };
 
+      //  handles extracting pokemon heights/weights from individual views.
+        // Some pages have multiple values, others have no metric values; the logic works around that.
       const getMetric = ( html ) => {
         const metrics = $("[title='Metric']", html);
         const parsedVals = [];
         for (let i = 0; i < metrics.length; i++) {
-          if ( metrics[i].children[0].data !== undefined ) {
+          if (metrics[i].children[0].data !== undefined && metrics[i].children.length < 2) {
             parsedVals.push(metrics[i].children[0].data);
+          } else if ( metrics[i].children.length >= 2 ) {
+            // Handles multiple metrics values and hunts for the average.
+            const avg = $("[title='Average']", metrics[i])[0].children[0].data;
+            parsedVals.push( avg );
           }
         }
-
         // Did you know some pokemon are missing metric values and need to be converted from imperial? me neither.
         if(parsedVals.length < 2){
           const imperials = $("[title='Imperial']", html);
@@ -130,6 +136,16 @@ rp( baseURL + pokeIndex )
                 // images for later use:
                 newPokemon.images.cardImage = $('.pi-image-thumbnail', singleViewHtml)[0].attribs.src;
                 newPokemon.images.cardSprite = $('h2 .image img', singleViewHtml)[0].attribs["data-src"];
+                desc = $('.pokedex_entry p', singleViewHtml);
+
+                // Sword and shield pokemon currently have broken/missing descriptions, this code is mostly to avoid them.
+                if (desc.children !== undefined || desc.children.length === 0) {
+                  // debugger
+                  if ( desc[0].children[0] !== undefined ){
+                    newPokemon.description = desc[0].children[0].data;
+                  }
+                }
+
                 const images = $('.pi-smart-group-body .image img', singleViewHtml);
 
                 // Try for all the evolution sprites on the page, there aren't classes so we need annoying selectors to find what we need
@@ -197,11 +213,12 @@ rp( baseURL + pokeIndex )
         newPokemon.images.other = pokeApiResults.sprites;
 
         const result = await singlePageScrape( pokeUrl );
-        console.log(`Index: ${ newPokemon.index }, ${ newPokemon.name }, ${ pokeUrl }, Gen:${ newPokemon.generation }`);
+        console.log(`Index: ${ newPokemon.index }, ${ newPokemon.name }, ${ baseURL + pokeUrl }, Gen:${ newPokemon.generation }`);
         console.log( newPokemon.images.cardImage );
         console.log( newPokemon.elementType );
         console.log(`Weight: ${newPokemon.weight}, height: ${newPokemon.height}` );
         console.log( `Moves: ${newPokemon.moves.length}` );
+        console.log(newPokemon.description);
         console.log('-----------------------');
         }
 
