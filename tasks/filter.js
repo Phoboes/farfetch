@@ -16,41 +16,38 @@ const PageFilter = {
         // Did you know some pokemon are missing metric values and need to be converted from imperial? me neither.
         if (parsedVals.length < 2) {
             const imperials = $("[title='Imperial']", html);
-            //  lbs to kg
-            // debugger
-            parsedVals[0] = (parseFloat((imperials[0].children[0].data)) * 0.453592.toFixed(2) + ' kg');
-            // ft/in to m
-            const splitText = imperials[1].children[0].data.split("'");
-            const inches = (parseInt(splitText[0]) * 12) + parseInt(splitText[1]);
-            parsedVals[1] = (inches / 39.37).toFixed(2);
+            if( imperials.length === 2 ){
+                //  lbs to kg
+                parsedVals[0] = (parseFloat((imperials[0].children[0].data)) * 0.453592.toFixed(2) + ' kg');
+                // ft/in to m
+                const splitText = imperials[1].children[0].data.split("'");
+                const inches = (parseInt(splitText[0]) * 12) + parseInt(splitText[1]);
+                parsedVals[1] = (inches / 39.37).toFixed(2);
+            }
         }
-        return {
-            weight: parsedVals[0],
-            height: parsedVals[1]
-        };
+
+            return {
+                weight: parsedVals[0] || '',
+                height: parsedVals[1] || ''
+            };
     },
 
-    getThisPokemonCard: function (html, pokemon) {
-        const cardList = $('.pi-section-navigation li div', html);
-        // debugger
-        if (cardList.length > 0) {
-            for (let i = 0; i < cardList.length; i++) {
-                const currentCard = $('.pi-section-content', html)[i];
-                // Certain pages have alternate names, like Ratata's card labelled as "Kantonian Form" -- check the title tag on the card as a failsafe
-                console.log("<<MULTIPLE FORMS>>");
-                //  TODO: Maybe kill off the card tag checker
-                if (
-                    cardList[i].children[0].data.trim() === pokemon.name ||
-                    $('.pi-title', currentCard)[0].children[0].data.trim() === pokemon.name
-                ) {
-                    return currentCard;
-                } else if (i + 1 === cardList.length) {
-                    return $('.pi-section-content', html)[0];
-                }
-            }
-        } else {
-            return html;
-        }
+    getPokeData: function(pokemon, html, card = html){
+        // pokemon = new Pokemon;
+        pokemon.name = $('h2[data-source*="name"]', card)[0].children[0].data;
+        const metrics = this.getMetric(card);
+        pokemon.weight = metrics.weight;
+        pokemon.height = metrics.height;
+        pokemon.moves = this.getAbilities(card);
+        pokemon.elementType = this.getTypes(card);
+        pokemon.index = this.getIndex(card);
+        pokemon.generation = this.getGen(card);
+
+        // images for later use:
+        pokemon.images = this.getImages(card);
+        pokemon.description = this.getDescription(html);
+
+        return pokemon;
     },
 
     getTypes: function (html) {
@@ -66,7 +63,8 @@ const PageFilter = {
     getImages: function (html) {
         const images = $('.pi-smart-group-body .image img', html);
         const imageCollection = [];
-        imageCollection[0] = $('.pi-image-thumbnail', html)[0].attribs.src;
+
+        imageCollection[0] = ($('section[data-item-name = "title"] img', html).length > 0) ? $('section[data-item-name = "title"] img', html)[0].attribs["data-src"] : '';
         imageCollection[1] = $('figure img', html)[0].attribs.srcset.match(/\s(https:\/\/.+)\s2/)[1];
         // Try for all the evolution sprites on the page, there aren't classes so we need annoying selectors to find what we need
         //  Ignore the img if it has the "Shape" tag -- it's a weird dinosaur thing
@@ -94,11 +92,12 @@ const PageFilter = {
     },
 
     getIndex: function (html) {
-        return parseInt($('div[data-source="ndex"]', html)[0].children[0].data);
+        // return parseInt($('div[data-source*="ndex"]', html)[0].children[0].data);
+        return parseInt($('.pi-smart-group-body div[data-source*="ndex"]', html)[1].children[0].data);
     },
 
     getGen: function (html) {
-        return $('[title^="Generation"]', html)[0].children[0].data;
+        return $('[title^="Genera"]', html)[0].children[0].data;
     },
 
     getUrlData(urls) {
@@ -117,13 +116,12 @@ const PageFilter = {
         if (desc.length) {
             if (desc.children !== undefined || desc.children.length === 0) {
                 if (desc[0].children[0] !== undefined) {
-                    return desc[0].children[0].data;
+                    return desc[0].children[0].nodeValue;
                 }
             }
         } else {
             return '';
         }
-
     },
 
     logResponse(pokemon, url) {

@@ -2,7 +2,23 @@ Pokemon = require('../models/pokemonModel');
 const filter = require('./filter')
 const $ = require('cheerio');
 const rp = require('request-promise');
-const { html } = require('cheerio');
+const mongoose = require('mongoose');
+Pokemon.collection.drop();
+console.log( "DB cleared." )
+
+mongoose.connect(`mongodb://localhost/farFetch`, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
+
+const db = mongoose.connection
+
+// Added check for DB connection
+if (!db){
+  console.log("Error connecting db")
+} else {
+  console.log("Db connected successfully")
+}
 
 const baseURL = 'https://pokemon.fandom.com';
 const pokeIndex = '/wiki/List_of_Pokémon';
@@ -14,7 +30,7 @@ rp(baseURL + pokeIndex)
     const genTables = $('.wikitable', html);
     cycleTables(genTables);
 
-    function cycleTables(table) {
+    async function cycleTables(table) {
       let timer = 0;
       const timerID = setInterval(() => {
         timer += 100;
@@ -45,24 +61,29 @@ rp(baseURL + pokeIndex)
         // Access the single page view of each pokemon we scrape using the /wiki/{pokemonName} above
         const singlePageScrape = async (wikiUrl) => {
           return new Promise(resolve => {
-            rp(baseURL + wikiUrl).then((singleViewHtml) => {
-              const newPokemon = new Pokemon;
-              newPokemon.name = nameTag;
-              const parentCard = filter.getThisPokemonCard(singleViewHtml, newPokemon);
-              const metrics = filter.getMetric(parentCard);
-              newPokemon.weight = metrics.weight;
-              newPokemon.height = metrics.height;
-              newPokemon.moves = filter.getAbilities(parentCard);
-              newPokemon.elementType = filter.getTypes(parentCard);
-              newPokemon.index = filter.getIndex(parentCard);
-              newPokemon.generation = filter.getGen(parentCard);
+            rp(baseURL + wikiUrl).then( async function(singleViewHtml){
+              const cardList = $($('.pi-section-content', singleViewHtml), singleViewHtml);
+              let newPokemon;
+              if( cardList.length ){
+                for( let i = 0; i < cardList.length; i++ ){
+                  // const newPokemon = new Pokemon();
+                  newPokemon = filter.getPokeData( {}, singleViewHtml, cardList[i]);
+                  filter.logResponse(newPokemon, baseURL);
 
-              // images for later use:
-              newPokemon.images = filter.getImages(parentCard);
-              newPokemon.description = filter.getDescription(singleViewHtml);
+                  await Pokemon.create(newPokemon).then(
+                    ( pokemon )=>{ console.log( "Saved to db." ) })
+                    .catch( (e) => { console.log(e.toJSON()) } );
+                }
+              } else {
+                // const newPokemon = new Pokemon();
+                newPokemon = filter.getPokeData( {}, singleViewHtml);
+                filter.logResponse(newPokemon, baseURL);
 
+                await Pokemon.create(newPokemon)
+                .then(( pokemon )=>{ console.log( "Saved to db." ) })
+                .catch( (e) => { console.log(e.toJSON()) } );
+              }
               resolve(newPokemon);
-              filter.logResponse(newPokemon, baseURL);
             })
           })
         };

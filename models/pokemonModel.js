@@ -43,6 +43,7 @@ var pokemonSchema = mongoose.Schema({
 });
 
 // Export pokemon model
-var Pokemon = module.exports = mongoose.model('pokemon', pokemonSchema);module.exports.get = function (callback, limit) {
+var Pokemon = module.exports = mongoose.model('pokemon', pokemonSchema);
+module.exports.get = function (callback, limit) {
     Pokemon.find(callback).limit(limit);
 }
